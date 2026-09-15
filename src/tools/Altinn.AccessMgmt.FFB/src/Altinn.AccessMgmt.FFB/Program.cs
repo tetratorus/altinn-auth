@@ -4,6 +4,11 @@ using Altinn.AccessMgmt.FFB.Jobs;
 using Altinn.AccessMgmt.FFB.Jobs.Models;
 using Altinn.AccessMgmt.FFB.Services;
 using Altinn.AccessMgmt.FFB.Services.Contracts;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -16,6 +21,55 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices();
+
+// Authentication: every request (pages, Blazor circuit, error pages) requires a signed-in operator.
+var authConfig = builder.Configuration.GetSection(AuthenticationConfig.SectionName).Get<AuthenticationConfig>() ?? new AuthenticationConfig();
+authConfig.Validate();
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+    })
+    .AddCookie(options =>
+    {
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = false;
+    })
+    .AddOpenIdConnect(options =>
+    {
+        options.Authority = authConfig.Authority;
+        options.ClientId = authConfig.ClientId;
+        options.ClientSecret = string.IsNullOrWhiteSpace(authConfig.ClientSecret) ? null : authConfig.ClientSecret;
+        options.CallbackPath = authConfig.CallbackPath;
+        options.ResponseType = OpenIdConnectResponseType.Code;
+        options.UsePkce = true;
+        options.SaveTokens = false;
+        options.GetClaimsFromUserInfoEndpoint = true;
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters.NameClaimType = "name";
+        options.TokenValidationParameters.RoleClaimType = authConfig.RoleClaimType;
+        options.Scope.Clear();
+        options.Scope.Add("openid");
+        options.Scope.Add("profile");
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser();
+    if (!string.IsNullOrWhiteSpace(authConfig.RequiredRole))
+    {
+        policy.RequireRole(authConfig.RequiredRole);
+    }
+
+    options.DefaultPolicy = policy.Build();
+    options.FallbackPolicy = options.DefaultPolicy;
+});
+
+builder.Services.AddCascadingAuthenticationState();
 
 // Environment infrastructure
 builder.Services.Configure<EnvironmentsConfig>(builder.Configuration);
@@ -53,10 +107,18 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapStaticAssets();
+app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .RequireAuthorization();
+
+app.MapPost("/signout", (HttpContext ctx) => TypedResults.SignOut(
+        new AuthenticationProperties { RedirectUri = "/" },
+        [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]))
+    .RequireAuthorization();
 
 app.Run();

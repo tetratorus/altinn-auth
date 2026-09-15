@@ -1,6 +1,13 @@
 ﻿<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Error">Ingen tilgang</MudText>
+                <MudText Typo="Typo.body1" Class="mud-text-secondary">
+                    Du er ikke autorisert til å bruke dette verktøyet.
+                </MudText>
+            </NotAuthorized>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>

@@ -43,6 +43,20 @@
                 </MudMenuItem>
             }
         </MudMenu>
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-2">@context.User.Identity?.Name</MudText>
+                <form method="post" action="/signout">
+                    <MudButton ButtonType="ButtonType.Submit"
+                               Variant="Variant.Text"
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Filled.Logout"
+                               Size="Size.Small">
+                        Logg ut
+                    </MudButton>
+                </form>
+            </Authorized>
+        </AuthorizeView>
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen"

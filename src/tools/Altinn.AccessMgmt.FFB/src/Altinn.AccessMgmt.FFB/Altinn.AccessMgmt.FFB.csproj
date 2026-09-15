@@ -13,6 +13,7 @@
   <ItemGroup>
     <PackageReference Include="Cronos" />
     <PackageReference Include="Dapper" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
     <PackageReference Include="MudBlazor" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
