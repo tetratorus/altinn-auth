@@ -151,7 +151,7 @@ public class DelegationService(AppDbContext db, IAssignmentService assignmentSer
         int packagesRevoked = 0;
 
         // Find Agent Role
-        var agentRole = await db.Roles.AsNoTracking().FirstOrDefaultAsync(t => string.Equals(t.Code.ToLower(), request.AgentRole.ToLower()), cancellationToken) ?? throw new KeyNotFoundException($"Role not found '{request.AgentRole}'");
+        var agentRole = await GetAgentRole(request.AgentRole, cancellationToken);
 
         // Verify Delegation Packages
         Dictionary<string, List<PackageDto>> rolepacks = await VerifyDelegationPackages(request);
@@ -264,7 +264,7 @@ public class DelegationService(AppDbContext db, IAssignmentService assignmentSer
         var result = new List<Delegation>();
 
         // Find Agent Role
-        var agentRole = await db.Roles.AsNoTracking().FirstOrDefaultAsync(t => t.Code == request.AgentRole, cancellationToken) ?? throw new KeyNotFoundException($"Role not found '{request.AgentRole}'");
+        var agentRole = await GetAgentRole(request.AgentRole, cancellationToken);
 
         // Verify Delegation Packages
         Dictionary<string, List<PackageDto>> rolepacks = await VerifyDelegationPackages(request);
@@ -349,7 +349,7 @@ public class DelegationService(AppDbContext db, IAssignmentService assignmentSer
         var result = new List<Delegation>();
 
         // Find Agent Role
-        var agentRole = await db.Roles.AsNoTracking().FirstOrDefaultAsync(t => t.Code == request.AgentRole, cancellationToken) ?? throw new KeyNotFoundException($"Role not found '{request.AgentRole}'");
+        var agentRole = await GetAgentRole(request.AgentRole, cancellationToken);
 
         // Verify Delegation Packages
         Dictionary<string, List<PackageDto>> rolepacks = await VerifyDelegationPackages(request);
@@ -542,6 +542,17 @@ public class DelegationService(AppDbContext db, IAssignmentService assignmentSer
         {
             return delegation;
         }
+    }
+
+    private async Task<Role> GetAgentRole(string agentRoleCode, CancellationToken cancellationToken)
+    {
+        var allowedCode = RoleConstants.Agent.Entity.Code;
+        if (!string.Equals(agentRoleCode, allowedCode, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"You cannot create client delegations with the agent role '{agentRoleCode}', only '{allowedCode}'");
+        }
+
+        return await db.Roles.AsNoTracking().FirstOrDefaultAsync(t => t.Code == allowedCode, cancellationToken) ?? throw new KeyNotFoundException($"Role not found '{allowedCode}'");
     }
 
     private async Task<Assignment> GetOrCreateAssignment(Entity from, Entity to, Role role, AuditValues audit = null, CancellationToken cancellationToken = default)
