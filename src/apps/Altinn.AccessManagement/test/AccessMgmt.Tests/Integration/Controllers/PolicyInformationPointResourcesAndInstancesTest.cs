@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Altinn.AccessManagement.Models;
 using Altinn.AccessManagement.Tests.Fixtures;
+using Altinn.AccessManagement.Tests.Util;
 using Altinn.AccessManagement.TestUtils.Data;
 using Altinn.AccessMgmt.PersistenceEF.Constants;
 using Altinn.AccessMgmt.PersistenceEF.Models;
@@ -150,6 +151,7 @@ public class PolicyInformationPointResourcesAndInstancesTest
         });
 
         _client = fixture.CreateClient(new() { AllowAutoRedirect = false });
+        _client.DefaultRequestHeaders.Add("PlatformAccessToken", PrincipalUtil.GetAccessToken("platform", "authorization"));
     }
 
     /// <summary>

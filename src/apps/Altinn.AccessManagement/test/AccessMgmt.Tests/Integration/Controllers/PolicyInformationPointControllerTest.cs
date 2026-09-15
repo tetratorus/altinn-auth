@@ -6,6 +6,7 @@ using Altinn.AccessManagement.Core.Repositories.Interfaces;
 using Altinn.AccessManagement.Models;
 using Altinn.AccessManagement.Tests.Fixtures;
 using Altinn.AccessManagement.Tests.Mocks;
+using Altinn.AccessManagement.Tests.Util;
 using Altinn.AccessManagement.Tests.Utils;
 using Altinn.AccessManagement.TestUtils.Fixtures;
 using Altinn.Authorization.Api.Contracts.Authorization;
@@ -42,6 +43,7 @@ public class PolicyInformationPointControllerTest : IClassFixture<AccessMgmtApiF
         });
 
         _client = fixture.CreateClient(new() { AllowAutoRedirect = false });
+        _client.DefaultRequestHeaders.Add("PlatformAccessToken", PrincipalUtil.GetAccessToken("platform", "authorization"));
     }
 
     /// <summary>
@@ -84,6 +86,27 @@ public class PolicyInformationPointControllerTest : IClassFixture<AccessMgmtApiF
 
         List<DelegationChangeExternal> actualDelegationChanges = JsonSerializer.Deserialize<List<DelegationChangeExternal>>(await actualResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), options);
         AssertionUtil.AssertEqual(GetExpected(scenario), actualDelegationChanges);
+    }
+
+    /// <summary>
+    /// Test case: Calls the PIP endpoints without a PlatformAccessToken
+    /// Expected: Returns 401 Unauthorized
+    /// </summary>
+    [Theory]
+    [InlineData("accesspackages")]
+    [InlineData("roles-and-accesspackages")]
+    public async Task PipEndpoints_MissingPlatformAccessToken_Returns401Unauthorized(string endpoint)
+    {
+        // Arrange
+        _client.DefaultRequestHeaders.Remove("PlatformAccessToken");
+
+        // Act
+        HttpResponseMessage getResponse = await _client.GetAsync($"accessmanagement/api/v1/policyinformation/{endpoint}?from={Guid.NewGuid()}&to={Guid.NewGuid()}", TestContext.Current.CancellationToken);
+        HttpResponseMessage postResponse = await _client.PostAsync($"accessmanagement/api/v1/policyinformation/getdelegationchanges", GetRequest("app_toPerson"), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, getResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, postResponse.StatusCode);
     }
 
     /* ToDo: Add Integration tests on database container

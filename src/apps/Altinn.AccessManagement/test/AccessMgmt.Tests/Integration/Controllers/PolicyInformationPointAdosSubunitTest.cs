@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Altinn.AccessManagement.Tests.Fixtures;
+using Altinn.AccessManagement.Tests.Util;
 using Altinn.AccessMgmt.Core;
 using Altinn.Authorization.Api.Contracts.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -42,6 +43,7 @@ public class PolicyInformationPointAdosSubunitTest : IClassFixture<AccessMgmtApi
         });
 
         _client = fixture.CreateClient(new() { AllowAutoRedirect = false });
+        _client.DefaultRequestHeaders.Add("PlatformAccessToken", PrincipalUtil.GetAccessToken("platform", "authorization"));
     }
 
     [Fact]
