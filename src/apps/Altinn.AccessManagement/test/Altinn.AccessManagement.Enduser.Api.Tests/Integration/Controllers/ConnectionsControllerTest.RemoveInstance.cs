@@ -208,5 +208,20 @@ public partial class ConnectionsControllerTest
 
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
+
+        /// <summary>
+        /// An unrelated party cannot be used to remove an instance from a connection.
+        /// </summary>
+        [Fact]
+        public async Task RemoveInstance_WithPartyMatchingNeitherFromNorTo_Returns400BadRequest()
+        {
+            HttpClient client = CreateClient(TestData.SiljeHaugen.Id, AuthzConstants.SCOPE_ENDUSER_CONNECTIONS_TOOTHERS_WRITE);
+
+            HttpResponseMessage response = await client.DeleteAsync(
+                $"{Route}/resources/instances?party={TestData.FredriksonsFabrikk.Id}&from={TestData.DumboAdventures.Id}&to={TestData.KaosMagicDesignAndArts.Id}&resource=app_skd_sirius-skattemelding-v1&instance={SiriusInstanceIdForRemove}",
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
     }
 }

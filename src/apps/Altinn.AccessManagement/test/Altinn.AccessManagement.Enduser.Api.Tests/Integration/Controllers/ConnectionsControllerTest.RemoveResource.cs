@@ -418,5 +418,20 @@ public partial class ConnectionsControllerTest
 
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
+
+        /// <summary>
+        /// An unrelated party cannot be used to remove a resource from a connection.
+        /// </summary>
+        [Fact]
+        public async Task RemoveResource_WithPartyMatchingNeitherFromNorTo_Returns400BadRequest()
+        {
+            HttpClient client = CreateClient(TestData.JinxArcane.Id, AuthzConstants.SCOPE_ENDUSER_CONNECTIONS_TOOTHERS_WRITE);
+
+            HttpResponseMessage response = await client.DeleteAsync(
+                $"{Route}/resources?party={TestData.KaosMagicDesignAndArts.Id}&from={TestData.DumboAdventures.Id}&to={TestData.MilleHundefrisor.Id}&resource=nav_sykepenger_sykmelding",
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
     }
 }

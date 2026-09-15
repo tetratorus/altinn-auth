@@ -242,6 +242,21 @@ public partial class ConnectionsControllerTest
         }
 
         /// <summary>
+        /// An unrelated party cannot be used to remove a connection.
+        /// </summary>
+        [Fact]
+        public async Task RemoveAssignment_WithPartyMatchingNeitherFromNorTo_Returns400BadRequest()
+        {
+            HttpClient client = CreateClient(TestData.SiljeHaugen.Id, AuthzConstants.SCOPE_ENDUSER_CONNECTIONS_TOOTHERS_WRITE);
+
+            HttpResponseMessage response = await client.DeleteAsync(
+                $"{Route}?party={TestData.FredriksonsFabrikk.Id}&from={TestData.DumboAdventures.Id}&to={TestData.BakerJohnsen.Id}",
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        /// <summary>
         /// When revoking a rightholder assignment (HanSoloEnterprise -> BenSolo),
         /// BenSolo already has an Altinn2 ReporterSender role assigned by HanSoloEnterprise.
         /// Expects 204 NoContent, and verifies that the Altinn2 role assignment
