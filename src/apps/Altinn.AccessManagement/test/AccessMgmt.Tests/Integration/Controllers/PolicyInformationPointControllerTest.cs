@@ -23,6 +23,7 @@ namespace Altinn.AccessManagement.Tests.Integration.Controllers;
 [IntegrationTest]
 public class PolicyInformationPointControllerTest : IClassFixture<AccessMgmtApiFixture>
 {
+    private readonly AccessMgmtApiFixture _fixture;
     private readonly HttpClient _client;
     private readonly JsonSerializerOptions options = new JsonSerializerOptions
     {
@@ -35,6 +36,7 @@ public class PolicyInformationPointControllerTest : IClassFixture<AccessMgmtApiF
     /// <param name="fixture">Shared <see cref="ApiFixture"/>.</param>
     public PolicyInformationPointControllerTest(AccessMgmtApiFixture fixture)
     {
+        _fixture = fixture;
         fixture.WithAppsettings(builder => builder.AddJsonFile("appsettings.test.json", optional: false));
         fixture.ConfigureServices(services =>
         {
@@ -42,6 +44,7 @@ public class PolicyInformationPointControllerTest : IClassFixture<AccessMgmtApiF
         });
 
         _client = fixture.CreateClient(new() { AllowAutoRedirect = false });
+        _client.DefaultRequestHeaders.Add("PlatformAccessToken", PrincipalUtil.GetAccessToken("platform", "authorization"));
     }
 
     /// <summary>
@@ -84,6 +87,31 @@ public class PolicyInformationPointControllerTest : IClassFixture<AccessMgmtApiF
 
         List<DelegationChangeExternal> actualDelegationChanges = JsonSerializer.Deserialize<List<DelegationChangeExternal>>(await actualResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken), options);
         AssertionUtil.AssertEqual(GetExpected(scenario), actualDelegationChanges);
+    }
+
+    /// <summary>
+    /// Test case: Calls the PIP endpoints without a PlatformAccessToken
+    /// Expected: Returns 401 Unauthorized
+    /// </summary>
+    [Theory]
+    [InlineData("getdelegationchanges", "POST")]
+    [InlineData("accesspackages?from=0268b99a-5817-4bbf-9b62-d90b16d527ea&to=ce4ba72b-d111-404f-95b5-313fb3847fa1", "GET")]
+    [InlineData("roles-and-accesspackages?from=0268b99a-5817-4bbf-9b62-d90b16d527ea&to=ce4ba72b-d111-404f-95b5-313fb3847fa1", "GET")]
+    public async Task PolicyInformation_NoPlatformAccessToken_Returns401Unauthorized(string path, string method)
+    {
+        // Arrange
+        HttpClient anonymousClient = _fixture.CreateClient(new() { AllowAutoRedirect = false });
+        HttpRequestMessage request = new(new HttpMethod(method), $"accessmanagement/api/v1/policyinformation/{path}");
+        if (method == "POST")
+        {
+            request.Content = GetRequest("app_toPerson");
+        }
+
+        // Act
+        HttpResponseMessage actualResponse = await anonymousClient.SendAsync(request, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, actualResponse.StatusCode);
     }
 
     /* ToDo: Add Integration tests on database container
