@@ -20,6 +20,11 @@ namespace Altinn.AccessManagement.Tests.Mocks
             ["01124621077"] = HttpStatusCode.InternalServerError, // KARI GUNNERUD (hits the fallback arm)
         };
 
+        /// <summary>
+        /// Authorization id the external IdPorten API does not know, so a delete of it returns 404.
+        /// </summary>
+        public const string UnknownAuthorizationId = "unknown-authorization-id";
+
         public Task<IdPortenClientResult<List<IdPortenAuthorization>>> GetIdPortenAuthorizations(string ssn, CancellationToken cancellationToken)
         {
             if (SsnToStatusCode.TryGetValue(ssn, out HttpStatusCode statusCode))
@@ -36,6 +41,11 @@ namespace Altinn.AccessManagement.Tests.Mocks
 
         public Task<IdPortenClientResult<bool>> DeleteIdPortenAuthorization(string ssn, string id, CancellationToken cancellationToken)
         {
+            if (id == UnknownAuthorizationId)
+            {
+                return Task.FromResult(new IdPortenClientResult<bool>(HttpStatusCode.NotFound, false));
+            }
+
             if (SsnToStatusCode.TryGetValue(ssn, out HttpStatusCode statusCode))
             {
                 return Task.FromResult(new IdPortenClientResult<bool>(statusCode, false));

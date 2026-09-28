@@ -73,6 +73,7 @@ namespace Altinn.AccessManagement.Core.Services
             HttpStatusCode.BadRequest => Problems.IdPortenAuthorizationBadRequest,
             HttpStatusCode.Unauthorized => Problems.IdPortenAuthorizationUnauthorized,
             HttpStatusCode.Forbidden => Problems.IdPortenAuthorizationForbidden,
+            HttpStatusCode.NotFound => Problems.IdPortenAuthorizationNotFound,
             _ => Problems.IdPortenAuthorizationInternalServerError,
         };
     }
