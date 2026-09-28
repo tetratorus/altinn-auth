@@ -17,6 +17,7 @@ using Altinn.Authorization.ABAC.Constants;
 using Altinn.Authorization.ABAC.Utils;
 using Altinn.Authorization.ABAC.Xacml;
 using Altinn.Authorization.Api.Contracts.AccessManagement;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Altinn.AccessManagement.Enduser.Api.Tests.Integration.Controllers;
@@ -235,6 +236,49 @@ public partial class ConnectionsControllerTest
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        /// <summary>
+        /// Malin (MD of Dumbo Adventures) replaces the resource rights delegated to Mille Hundefrisør with an empty list.
+        /// Expects 200 OK and that the existing resource delegation is removed.
+        /// </summary>
+        [Fact]
+        public async Task UpdateResourceRights_WithEmptyRightKeys_RemovesExistingResourceRights()
+        {
+            const string resource = "app_mat_mattilsynet-baker-konditorvare";
+            List<string> rightKeys = await GetDelegatableRightKeys(resource);
+            Assert.NotEmpty(rightKeys);
+
+            await AddInitialResourceRights(resource, [rightKeys.First()]);
+            Assert.True(await HasDirectResourceDelegation(resource));
+
+            var updateBody = new RightKeyListDto { DirectRightKeys = [] };
+            HttpClient client = CreateClient(TestData.MalinEmilie.Id, AuthzConstants.SCOPE_ENDUSER_CONNECTIONS_TOOTHERS_WRITE);
+
+            HttpResponseMessage response = await client.PutAsJsonAsync(
+                $"{Route}/resources/rights?party={TestData.DumboAdventures.Id}&to={TestData.MilleHundefrisor.Id}&resource={resource}",
+                updateBody,
+                TestContext.Current.CancellationToken);
+
+            string responseContent = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected OK but got {response.StatusCode}. Response body: {responseContent}");
+            Assert.False(await HasDirectResourceDelegation(resource));
+        }
+
+        private async Task<bool> HasDirectResourceDelegation(string resource)
+        {
+            bool exists = false;
+            await Fixture.QueryDb(async db =>
+            {
+                exists = await db.AssignmentResources.AnyAsync(
+                    ar => ar.Assignment.FromId == TestData.DumboAdventures.Id
+                        && ar.Assignment.ToId == TestData.MilleHundefrisor.Id
+                        && ar.Assignment.RoleId == RoleConstants.Rightholder
+                        && ar.Resource.RefId == resource,
+                    TestContext.Current.CancellationToken);
+            });
+
+            return exists;
         }
 
         /// <summary>
