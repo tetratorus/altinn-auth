@@ -223,12 +223,6 @@ public class ConnectionQuery(AppDbContext db, bool adosSubunitInheritanceEnabled
                 {
                     throw new InvalidOperationException("Failed to include instances", ex);
                 }
-
-                // Remove connections where no resources were found if filtering on specific resources
-                if (filter.IncludeResources && filter.ResourceIds?.Count > 0)
-                {
-                    result.RemoveAll(t => t.Resources.Count == 0 && t.Instances.Count == 0);
-                }
             }
 
             if (filter.EnrichEntities)

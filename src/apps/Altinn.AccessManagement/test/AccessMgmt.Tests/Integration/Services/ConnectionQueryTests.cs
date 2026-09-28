@@ -1026,56 +1026,6 @@ public class ConnectionQueryTests : IClassFixture<EfDatabaseFixture>, IAsyncLife
 
     #endregion
 
-    #region ResourceIds filtering
-
-    [Fact]
-    public async Task GetConnectionsFromOthers_ResourceIdsFilter_RemovesConnectionsWithNoMatchingResources()
-    {
-        var personId = TestDataSet.GetEntity("Nina").Id;
-        var skrikId = TestDataSet.GetEntity("Skrik Frisør").Id;
-
-        var filter = new ConnectionQueryFilter
-        {
-            ToIds = new[] { personId },
-            IncludeKeyRole = false,
-            IncludeDelegation = false,
-            IncludeResources = true,
-            ResourceIds = new[] { TestDataSet.TestResourceId },
-            EnrichEntities = false,
-        };
-
-        var dbResult = await _query.GetConnectionsFromOthersAsync(filter, TestContext.Current.CancellationToken);
-
-        // Only Nina's Rightholder assignment from Skrik Frisør carries the resource; the ManagingDirector connection must be pruned
-        Assert.NotEmpty(dbResult);
-        Assert.All(dbResult, c => Assert.Contains(c.Resources, r => r.Id == TestDataSet.TestResourceId));
-        Assert.Contains(dbResult, c => c.FromId == skrikId && c.RoleId == RoleConstants.Rightholder.Id);
-        Assert.DoesNotContain(dbResult, c => c.RoleId == RoleConstants.ManagingDirector.Id);
-    }
-
-    [Fact]
-    public async Task GetConnectionsFromOthers_ResourceIdsFilter_NoMatchingResources_ReturnsEmpty()
-    {
-        var personId = TestDataSet.GetEntity("Gunnar").Id;
-
-        var filter = new ConnectionQueryFilter
-        {
-            ToIds = new[] { personId },
-            IncludeKeyRole = true,
-            IncludeDelegation = true,
-            IncludeResources = true,
-            IncludeDelegationResources = true,
-            ResourceIds = new[] { Guid.NewGuid() },
-            EnrichEntities = false,
-        };
-
-        var dbResult = await _query.GetConnectionsFromOthersAsync(filter, TestContext.Current.CancellationToken);
-
-        Assert.Empty(dbResult);
-    }
-
-    #endregion
-
     #region Supplier role exclusion
 
     [Fact]
