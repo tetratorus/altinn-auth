@@ -391,11 +391,12 @@ namespace Altinn.ResourceRegistry.Core.Services
             {
                 foreach (string subjectAttributeValue in kvp.Value)
                 {
+                    string normalizedValue = subjectAttributeValue.Trim().ToLower();
                     AttributeMatchV2 subjectMatch = new AttributeMatchV2
                     {
                         Type = kvp.Key,
-                        Value = subjectAttributeValue.ToLower(),
-                        Urn = $"{kvp.Key}:{subjectAttributeValue.ToLower()}"
+                        Value = normalizedValue,
+                        Urn = $"{kvp.Key}:{normalizedValue}"
                     };
 
                     if (!subjectAttributeMatches.Exists(r => r.Urn.Equals(subjectMatch.Urn)))
