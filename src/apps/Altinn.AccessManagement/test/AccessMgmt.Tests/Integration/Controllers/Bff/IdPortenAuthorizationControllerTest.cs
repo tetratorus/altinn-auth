@@ -5,6 +5,7 @@ using System.Text.Json;
 using Altinn.AccessManagement.Core.Constants;
 using Altinn.AccessManagement.Core.Models.IdPortenAuthorization;
 using Altinn.AccessManagement.Tests.Fixtures;
+using Altinn.AccessManagement.Tests.Mocks;
 using Altinn.AccessManagement.Tests.Util;
 using Altinn.Authorization.ProblemDetails;
 
@@ -125,6 +126,28 @@ namespace Altinn.AccessManagement.Tests.Integration.Controllers.Bff
 
             Assert.Equal(expectedStatusCode, response.StatusCode);
             Assert.Equal(expectedErrorCode, problemDetails.ErrorCode.ToString());
+        }
+
+        /// <summary>
+        /// Test case: Delete IdPorten authorization that does not exist in IdPorten
+        /// Scenario: The external API responds with 404 for an unknown authorization id
+        /// Expected: Returns 404 with AM-00051, not 500
+        /// </summary>
+        [Fact]
+        public async Task DeleteIdPortenAuthorization_UnknownId_Returns404()
+        {
+            string token = PrincipalUtil.GetToken(20001337, 50003899, 2, Guid.Parse("d5b861c8-8e3b-44cd-9952-5315e5990cf5"), AuthzConstants.SCOPE_PORTAL_ENDUSER);
+            using HttpRequestMessage request = new(HttpMethod.Delete, $"accessmanagement/api/v1/bff/idportenauthorization?id={IdPortenAuthorizationClientMock.UnknownAuthorizationId}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            HttpResponseMessage response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+            string responseText = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+            AltinnValidationProblemDetails problemDetails = JsonSerializer.Deserialize<AltinnValidationProblemDetails>(responseText, _jsonOptions);
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.NotNull(problemDetails);
+            Assert.Equal("AM-00051", problemDetails.ErrorCode.ToString());
         }
     }
 }
