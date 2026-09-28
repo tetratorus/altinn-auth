@@ -367,6 +367,38 @@ public class ResourceControllerWithDbTests(DbFixture dbFixture, WebApplicationFi
         Assert.Equal("changes_kept_res", changes.Items.First().ResourceId);
     }
 
+    [Fact]
+    public async Task DeleteResource_SoftDeletesResourceSubjects()
+    {
+        await Repository.CreateResource(CreateTestResource("subjects_deleted_res"));
+        await Repository.CreateResource(CreateTestResource("subjects_kept_res"));
+        await Repository.SetResourceSubjects(CreateResourceSubjects("urn:altinn:resource:subjects_deleted_res", ["urn:altinn:rolecode:dagl", "urn:altinn:rolecode:utinn"], "ttd"), logPolicyChange: true);
+        await Repository.SetResourceSubjects(CreateResourceSubjects("urn:altinn:resource:subjects_kept_res", ["urn:altinn:rolecode:dagl"], "ttd"), logPolicyChange: true);
+
+        await Repository.DeleteResource("subjects_deleted_res");
+
+        using var client = CreateAuthenticatedClient();
+
+        HttpRequestMessage bySubjectsRequest = new HttpRequestMessage(HttpMethod.Post, "resourceregistry/api/v1/resource/bysubjects/")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(new List<string> { "urn:altinn:rolecode:dagl", "urn:altinn:rolecode:utinn" }), Encoding.UTF8, "application/json")
+        };
+        HttpResponseMessage response = await client.SendAsync(bySubjectsRequest);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Paginated<SubjectResources>? subjectResources = await response.Content.ReadFromJsonAsync<Paginated<SubjectResources>>();
+        Assert.NotNull(subjectResources);
+        SubjectResources dagl = Assert.Single(subjectResources.Items);
+        Assert.Equal("urn:altinn:rolecode:dagl", dagl.Subject.Urn);
+        Assert.Equal("urn:altinn:resource:subjects_kept_res", Assert.Single(dagl.Resources).Urn);
+
+        response = await client.GetAsync("resourceregistry/api/v1/resource/updated/");
+        Paginated<UpdatedResourceSubject>? updated = await response.Content.ReadFromJsonAsync<Paginated<UpdatedResourceSubject>>();
+        Assert.NotNull(updated);
+        Assert.Equal(3, updated.Items.Count());
+        Assert.All(updated.Items.Where(x => x.ResourceUrn.ToString() == "urn:altinn:resource:subjects_deleted_res"), x => Assert.True(x.Deleted));
+        Assert.False(updated.Items.Single(x => x.ResourceUrn.ToString() == "urn:altinn:resource:subjects_kept_res").Deleted);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1001)]

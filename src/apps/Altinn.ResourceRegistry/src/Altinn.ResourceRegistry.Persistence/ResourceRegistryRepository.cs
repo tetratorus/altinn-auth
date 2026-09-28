@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using Altinn.Authorization.ProblemDetails;
 using Altinn.ResourceRegistry.Core;
+using Altinn.ResourceRegistry.Core.Constants;
 using Altinn.ResourceRegistry.Core.Errors;
 using Altinn.ResourceRegistry.Core.Models;
 using Altinn.ResourceRegistry.Persistence.Extensions;
@@ -182,7 +183,9 @@ internal class ResourceRegistryRepository : IResourceRegistryRepository
     {
         // Deleting a resource removes all its version rows; the latest version is returned. The
         // resource_identifier row is kept and marked deleted, so the change feed can exclude the
-        // resource (and expose the deletion later if needed).
+        // resource (and expose the deletion later if needed). The resource's subjects are
+        // soft-deleted so they drop out of the subject lookups and show up as deleted in the
+        // updated subjects feed.
         const string QUERY = /*strpsql*/@"
             WITH del AS (
                 DELETE FROM resourceregistry.resources
@@ -195,6 +198,13 @@ internal class ResourceRegistryRepository : IResourceRegistryRepository
                     last_changed = now()
                 WHERE ri.identifier = @identifier
                   AND EXISTS (SELECT 1 FROM del)
+            ), subjects AS (
+                UPDATE resourceregistry.resourcesubjects rs
+                SET deleted = true,
+                    updated_at = now()
+                WHERE rs.resource_urn = @resourceurn
+                  AND rs.deleted = false
+                  AND EXISTS (SELECT 1 FROM del)
             )
             SELECT identifier, created, modified, serviceresourcejson, version_id
             FROM del
@@ -206,6 +216,7 @@ internal class ResourceRegistryRepository : IResourceRegistryRepository
         {
             await using var pgcom = _conn.CreateCommand(QUERY);
             pgcom.Parameters.AddWithValue("identifier", NpgsqlDbType.Text, id);
+            pgcom.Parameters.AddWithValue("resourceurn", NpgsqlDbType.Text, $"{AltinnXacmlConstants.MatchAttributeIdentifiers.ResourceRegistryAttribute}:{id}");
 
             var serviceResource = await pgcom.ExecuteEnumerableAsync(cancellationToken)
                 .Select(GetServiceResource)
