@@ -675,6 +675,34 @@ public class ResourceControllerWithDbTests(DbFixture dbFixture, WebApplicationFi
         Assert.Single(resource);
     }
 
+    /// <summary>
+    /// Scenario: A resource changes resourceType in a later version
+    /// Expects: Searching by resourceType only matches the latest version of the resource
+    /// </summary>
+    [Fact]
+    public async Task SearchResources_ByResourceType_OnlyMatchesLatestVersion()
+    {
+        ServiceResource resource = CreateTestResource("search_resourcetype_changed");
+        resource.ResourceType = ResourceType.MaskinportenSchema;
+        await Repository.CreateResource(resource);
+
+        resource.ResourceType = ResourceType.GenericAccessResource;
+        await Repository.UpdateResource(resource);
+
+        using var client = CreateClient();
+
+        List<ServiceResource>? maskinportenResources = await client.GetFromJsonAsync<List<ServiceResource>>(
+            $"resourceregistry/api/v1/Resource/Search?ResourceType={(int)ResourceType.MaskinportenSchema}", _jsonOptions);
+        Assert.NotNull(maskinportenResources);
+        Assert.DoesNotContain(maskinportenResources, r => r.Identifier == "search_resourcetype_changed");
+
+        List<ServiceResource>? genericResources = await client.GetFromJsonAsync<List<ServiceResource>>(
+            $"resourceregistry/api/v1/Resource/Search?ResourceType={(int)ResourceType.GenericAccessResource}", _jsonOptions);
+        Assert.NotNull(genericResources);
+        ServiceResource found = Assert.Single(genericResources, r => r.Identifier == "search_resourcetype_changed");
+        Assert.Equal(ResourceType.GenericAccessResource, found.ResourceType);
+    }
+
     [Fact]
     public async Task SearchResources_ByOrgCode_Ok()
     {

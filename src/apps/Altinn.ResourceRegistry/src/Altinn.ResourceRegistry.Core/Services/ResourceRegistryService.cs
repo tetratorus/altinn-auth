@@ -102,7 +102,9 @@ namespace Altinn.ResourceRegistry.Core.Services
         /// <inheritdoc/>
         public async Task<List<ServiceResource>> GetSearchResults(ResourceSearch resourceSearch, CancellationToken cancellationToken = default)
         {
-            List<ServiceResource> resourceList = await GetResourceList(includeApps: false, includeExpired: false, includeMigratedApps: false, includeAllVersions: true, cancellationToken);
+            // Only reference searches match historical versions (e.g. a specific Altinn 2 service edition version).
+            bool includeAllVersions = !string.IsNullOrEmpty(resourceSearch.Reference);
+            List<ServiceResource> resourceList = await GetResourceList(includeApps: false, includeExpired: false, includeMigratedApps: false, includeAllVersions, cancellationToken);
             return ServiceResourceHelper.GetSearchResultsFromResourceList(resourceList, resourceSearch);
         }
 
