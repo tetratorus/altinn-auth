@@ -1,3 +1,4 @@
+using System.Xml;
 using Altinn.Authorization.ProblemDetails;
 using Altinn.Authorization.ServiceDefaults;
 using Altinn.Platform.Events.Formatters;
@@ -457,6 +458,11 @@ namespace Altinn.ResourceRegistry.Controllers
             {
                 _logger.LogError(ex.Message);
                 return BadRequest(ex.Message);
+            }
+            catch (XmlException ex)
+            {
+                _logger.LogWarning(ex, "Invalid XACML policy for resource {ResourceId}", id);
+                return BadRequest($"Policy not accepted: {ex.Message}");
             }
             catch (Exception ex)
             {
