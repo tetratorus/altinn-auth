@@ -2,7 +2,9 @@
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
+using Altinn.AccessManagement.Api.ServiceOwner.Validation;
 using Altinn.AccessManagement.Core.Constants;
+using Altinn.AccessManagement.Core.Errors;
 using Altinn.AccessManagement.TestUtils;
 using Altinn.AccessManagement.TestUtils.Data;
 using Altinn.AccessManagement.TestUtils.Fixtures;
@@ -11,6 +13,7 @@ using Altinn.AccessMgmt.Core.Outbox;
 using Altinn.AccessMgmt.PersistenceEF.Constants;
 using Altinn.AccessMgmt.PersistenceEF.Models;
 using Altinn.Authorization.Api.Contracts.AccessManagement.Request;
+using Altinn.Authorization.ProblemDetails;
 using Microsoft.EntityFrameworkCore;
 
 namespace Altinn.AccessManagement.ServiceOwner.Api.Tests.Integration.Controllers;
@@ -499,6 +502,61 @@ public class RequestControllerTest
                 TestContext.Current.CancellationToken);
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task CreateRequest_WithUnknownPackage_Returns400PackageNotExists()
+        {
+            var client = CreateClient(Fixture, TestData.NAV.Entity.OrganizationIdentifier);
+            var body = new CreateServiceOwnerRequest
+            {
+                From = $"urn:altinn:person:identifier-no:{TestData.LarsBakke.Entity.PersonIdentifier}",
+                To = $"urn:altinn:organization:identifier-no:{TestData.BakerJohnsen.Entity.OrganizationIdentifier}",
+                Package = new RequestReferenceDto { ReferenceId = "urn:altinn:accesspackage:does-not-exist" },
+            };
+
+            var response = await client.PostAsJsonAsync(Route, body, TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var problem = await response.Content.ReadFromJsonAsync<AltinnValidationProblemDetails>(TestContext.Current.CancellationToken);
+            Assert.NotNull(problem);
+            Assert.Single(problem.Errors, e => e.ErrorCode == ValidationErrors.PackageNotExists.ErrorCode);
+        }
+
+        [Fact]
+        public async Task CreateRequest_WithoutTo_Returns400InvalidUrn()
+        {
+            var client = CreateClient(Fixture, TestData.NAV.Entity.OrganizationIdentifier);
+            var body = new CreateServiceOwnerRequest
+            {
+                From = $"urn:altinn:person:identifier-no:{TestData.LarsBakke.Entity.PersonIdentifier}",
+                Package = new RequestReferenceDto { ReferenceId = PackageConstants.Agriculture.Entity.Urn },
+            };
+
+            var response = await client.PostAsJsonAsync(Route, body, TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var problem = await response.Content.ReadFromJsonAsync<AltinnValidationProblemDetails>(TestContext.Current.CancellationToken);
+            Assert.NotNull(problem);
+            Assert.Single(problem.Errors, e => e.ErrorCode == ValidationErrorDescriptors.InvalidUrn.ErrorCode);
+        }
+
+        [Fact]
+        public async Task CreateRequest_WithoutFrom_Returns400InvalidUrn()
+        {
+            var client = CreateClient(Fixture, TestData.NAV.Entity.OrganizationIdentifier);
+            var body = new CreateServiceOwnerRequest
+            {
+                To = $"urn:altinn:organization:identifier-no:{TestData.BakerJohnsen.Entity.OrganizationIdentifier}",
+                Package = new RequestReferenceDto { ReferenceId = PackageConstants.Agriculture.Entity.Urn },
+            };
+
+            var response = await client.PostAsJsonAsync(Route, body, TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var problem = await response.Content.ReadFromJsonAsync<AltinnValidationProblemDetails>(TestContext.Current.CancellationToken);
+            Assert.NotNull(problem);
+            Assert.Single(problem.Errors, e => e.ErrorCode == ValidationErrorDescriptors.InvalidUrn.ErrorCode);
         }
     }
 
