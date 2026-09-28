@@ -393,6 +393,17 @@ public partial class ConnectionService(
             }
         }
 
+        if (keys.Count == 0)
+        {
+            var problem = await RemoveResource(from.Id, to.Id, resourceObj.Id, configureConnection, cancellationToken);
+            if (problem is { })
+            {
+                return problem;
+            }
+
+            return true;
+        }
+
         List<Rule> result = await singleRightsService.TryWriteDelegationPolicyRules(from, to, resourceObj, keys, by, ignoreExistingPolicy: true, cancellationToken: cancellationToken);
 
         if (!result.All(r => r.CreatedSuccessfully))
