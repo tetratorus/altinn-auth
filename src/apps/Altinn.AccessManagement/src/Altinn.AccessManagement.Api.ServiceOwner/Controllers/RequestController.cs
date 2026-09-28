@@ -368,7 +368,7 @@ public class RequestController(
             errorBuilder.Add(ValidationErrors.PackageNotExists, "/package", [new("package", $"No package was found with value '{package.ReferenceId}'.")]);
         }
 
-        if (!packageObj.Entity.IsAssignable)
+        if (packageObj is { Entity.IsAssignable: false })
         {
             errorBuilder.Add(ValidationErrors.PackageIsNotAssignable, "/package", [new("package", $"Package with reference ID '{package.ReferenceId}' is not assignable.")]);
         }
@@ -410,6 +410,12 @@ public class RequestController(
                 error(ref errors);
             }
         };
+
+        if (string.IsNullOrEmpty(urn))
+        {
+            accumulatedErrors.Add((ref ValidationErrorBuilder errorBuilder) => errorBuilder.Add(ValidationErrorDescriptors.InvalidUrn, paramName, [new(paramName, "Urn must be defined.")]));
+            return (null, errorBuilderFunc);
+        }
 
         if (!ValidUrn(urn))
         {
