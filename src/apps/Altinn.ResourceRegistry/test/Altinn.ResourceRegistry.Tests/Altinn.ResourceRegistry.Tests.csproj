@@ -43,6 +43,9 @@
     <None Update="Data\ResourcePolicies\altinn_access_management_invalid_missing_resourceid.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Data\ResourcePolicies\altinn_access_management_invalid_missing_anyof.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Data\ResourcePolicies\altinn_access_management_invalid_resourceid.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
