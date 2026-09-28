@@ -166,6 +166,88 @@ public class ResourceControllerWithDbTests(DbFixture dbFixture, WebApplicationFi
     }
 
     [Fact]
+    public async Task SetResourcePolicy_SubjectAttributeValuesWithWhitespace_AreTrimmed()
+    {
+        ServiceResource resource = new ServiceResource()
+        {
+            Identifier = "skd_whitespace_subjects",
+            HasCompetentAuthority = new CompetentAuthority()
+            {
+                Organization = "974761076",
+                Orgcode = "skd"
+            }
+        };
+        await Repository.CreateResource(resource);
+
+        string policy = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <xacml:Policy xmlns:xacml="urn:oasis:names:tc:xacml:3.0:core:schema:wd-17" PolicyId="urn:altinn:example:policyid:1" Version="1.0" RuleCombiningAlgId="urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:deny-overrides">
+              <xacml:Target/>
+              <xacml:Rule RuleId="urn:altinn:example:ruleid:1" Effect="Permit">
+                <xacml:Target>
+                  <xacml:AnyOf>
+                    <xacml:AllOf>
+                      <xacml:Match MatchId="urn:oasis:names:tc:xacml:3.0:function:string-equal-ignore-case">
+                        <xacml:AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">skd
+                        </xacml:AttributeValue>
+                        <xacml:AttributeDesignator AttributeId="urn:altinn:org" Category="urn:oasis:names:tc:xacml:1.0:subject-category:access-subject" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
+                      </xacml:Match>
+                    </xacml:AllOf>
+                    <xacml:AllOf>
+                      <xacml:Match MatchId="urn:oasis:names:tc:xacml:3.0:function:string-equal-ignore-case">
+                        <xacml:AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">
+                            skd_whitespace_subjects
+                        </xacml:AttributeValue>
+                        <xacml:AttributeDesignator AttributeId="urn:altinn:resource:delegation" Category="urn:oasis:names:tc:xacml:1.0:subject-category:access-subject" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
+                      </xacml:Match>
+                    </xacml:AllOf>
+                  </xacml:AnyOf>
+                  <xacml:AnyOf>
+                    <xacml:AllOf>
+                      <xacml:Match MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+                        <xacml:AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">skd_whitespace_subjects</xacml:AttributeValue>
+                        <xacml:AttributeDesignator AttributeId="urn:altinn:resource" Category="urn:oasis:names:tc:xacml:3.0:attribute-category:resource" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
+                      </xacml:Match>
+                    </xacml:AllOf>
+                  </xacml:AnyOf>
+                  <xacml:AnyOf>
+                    <xacml:AllOf>
+                      <xacml:Match MatchId="urn:oasis:names:tc:xacml:1.0:function:string-equal">
+                        <xacml:AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">read</xacml:AttributeValue>
+                        <xacml:AttributeDesignator AttributeId="urn:oasis:names:tc:xacml:1.0:action:action-id" Category="urn:oasis:names:tc:xacml:3.0:attribute-category:action" DataType="http://www.w3.org/2001/XMLSchema#string" MustBePresent="false"/>
+                      </xacml:Match>
+                    </xacml:AllOf>
+                  </xacml:AnyOf>
+                </xacml:Target>
+              </xacml:Rule>
+            </xacml:Policy>
+            """;
+
+        using var client = CreateClient();
+        string token = PrincipalUtil.GetOrgToken("skd", "974761076", "altinn:resourceregistry/resource.write");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        ByteArrayContent fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(policy));
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("text/xml");
+
+        MultipartFormDataContent content = new();
+        content.Add(fileContent, "policyFile", $"{resource.Identifier}.xml");
+
+        HttpResponseMessage response = await client.PutAsync($"resourceregistry/api/v1/Resource/{resource.Identifier}/policy", content);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        response = await client.GetAsync("resourceregistry/api/v1/resource/updated/");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Paginated<UpdatedResourceSubject>? updated = await response.Content.ReadFromJsonAsync<Paginated<UpdatedResourceSubject>>();
+
+        Assert.NotNull(updated);
+        Assert.Equal(
+            ["urn:altinn:org:skd", "urn:altinn:resource:delegation:skd_whitespace_subjects"],
+            updated.Items.Select(x => x.SubjectUrn.ToString()).Order());
+        Assert.All(updated.Items, x => Assert.Equal("urn:altinn:resource:skd_whitespace_subjects", x.ResourceUrn.ToString()));
+    }
+
+    [Fact]
     public async Task GetUpdatedResourceSubjects_Paginates()
     {
         await Repository.SetResourceSubjects(CreateResourceSubjects("urn:altinn:resource:foo", ["urn:altinn:rolecode:r001", "urn:altinn:rolecode:r002"], "ttd"));
