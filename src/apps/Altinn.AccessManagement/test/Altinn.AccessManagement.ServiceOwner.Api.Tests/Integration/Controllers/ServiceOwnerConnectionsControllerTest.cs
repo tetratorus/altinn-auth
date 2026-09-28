@@ -240,6 +240,40 @@ public partial class ServiceOwnerConnectionsControllerTest
         }
 
         [Fact]
+        public async Task AddPackage_FromAndToSameParty_Returns400AndDoesNotCreateAssignment()
+        {
+            // Arrange
+            var client = CreateClient();
+
+            ServiceOwnerConnectionPartyUrn.OrganizationId party = ServiceOwnerConnectionPartyUrn.OrganizationId.Create(OrganizationNumber.Parse(TestData.SvendsenAutomobil.Entity.OrganizationIdentifier));
+            AccessPackageUrn.AccessPackage package = AccessPackageUrn.AccessPackage.Create(new AccessPackageIdentifier(PackageConstants.Agriculture.Entity.Code));
+
+            ServiceOwnerAccessPackageDelegation request = new()
+            {
+                From = party,
+                To = party,
+                PackageUrn = package
+            };
+
+            // Act
+            var response = await client.PostAsJsonAsync($"{Route}/accesspackages", request, TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+            await Fixture.QueryDb(async db =>
+            {
+                var assignment = await db.Assignments
+                    .Where(a => a.FromId == TestData.SvendsenAutomobil.Id)
+                    .Where(a => a.ToId == TestData.SvendsenAutomobil.Id)
+                    .Where(a => a.RoleId == RoleConstants.Rightholder)
+                    .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+
+                Assert.Null(assignment);
+            });
+        }
+
+        [Fact]
         public async Task AddPackage_FromOrganisationOnPackageThatSupportsOrganisation_Returns200WithCreatedAssignmentPackage()
         {
             // Arrange

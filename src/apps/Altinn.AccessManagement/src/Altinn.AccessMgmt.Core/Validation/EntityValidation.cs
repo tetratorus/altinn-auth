@@ -66,6 +66,20 @@ public static class EntityValidation
         return EntityExists(party, "to")();
     };
 
+    internal static RuleExpression FromIsNotSameAsTo(Guid fromId, Guid toId) => () =>
+    {
+        if (fromId != toId)
+        {
+            return null;
+        }
+
+        return (ref ValidationErrorBuilder errors) =>
+        {
+            errors.Add(ValidationErrors.InvalidQueryParameter, "QUERY/from", [new("from", "Self-delegation not allowed. From and To cannot be the same party")]);
+            errors.Add(ValidationErrors.InvalidQueryParameter, "QUERY/to", [new("to", "Self-delegation not allowed. From and To cannot be the same party")]);
+        };
+    };
+
     internal static RuleExpression FromIsNotTo(Guid fromId, Guid toId, string fromParamName = "party", string toParamName = "supplier") => () =>
     {
         if (fromId != toId)

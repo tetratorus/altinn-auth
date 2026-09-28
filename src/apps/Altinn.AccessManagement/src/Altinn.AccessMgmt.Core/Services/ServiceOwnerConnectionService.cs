@@ -25,9 +25,15 @@ namespace Altinn.AccessMgmt.Core.Services
         {
             var options = new ConnectionOptions(configureConnection);
 
+            var problem = ValidationComposer.Validate(EntityValidation.FromIsNotSameAsTo(fromId, toId));
+            if (problem is not null)
+            {
+                return problem;
+            }
+
             // Validate From / To entity types against the configured options.
             var (fromEntity, toEntity) = await ConnectionWriteValidation.GetFromAndToEntitiesAsync(dbContext, fromId, toId, cancellationToken);
-            var problem = ConnectionWriteValidation.ValidateWriteOpInput(fromEntity, toEntity, options);
+            problem = ConnectionWriteValidation.ValidateWriteOpInput(fromEntity, toEntity, options);
             if (problem is not null)
             {
                 return problem;
@@ -166,9 +172,15 @@ namespace Altinn.AccessMgmt.Core.Services
 
             var options = new ConnectionOptions(configureConnection);
 
+            var problem = ValidationComposer.Validate(EntityValidation.FromIsNotSameAsTo(fromId, toId));
+            if (problem is not null)
+            {
+                return problem;
+            }
+
             // Validate From / To entity types against the configured options.
             var (fromEntity, toEntity) = await ConnectionWriteValidation.GetFromAndToEntitiesAsync(dbContext, fromId, toId, cancellationToken);
-            var problem = ConnectionWriteValidation.ValidateWriteOpInput(fromEntity, toEntity, options);
+            problem = ConnectionWriteValidation.ValidateWriteOpInput(fromEntity, toEntity, options);
             if (problem is not null)
             {
                 return problem;

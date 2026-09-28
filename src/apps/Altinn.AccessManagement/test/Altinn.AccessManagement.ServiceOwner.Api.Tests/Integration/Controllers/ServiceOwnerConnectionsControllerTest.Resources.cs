@@ -432,6 +432,20 @@ public partial class ServiceOwnerConnectionsControllerTest
         }
 
         /// <summary>
+        /// A party cannot be given a resource delegation from itself.
+        /// </summary>
+        [Fact]
+        public async Task AddResource_FromAndToSameParty_Returns400AndDoesNotCreateAssignment()
+        {
+            var request = CreateRequest(Organization(TestData.FredriksonsFabrikk), Organization(TestData.FredriksonsFabrikk), await GetAvailableRightKeys());
+
+            var response = await CreateClient().PostAsJsonAsync($"{Route}/resources", request, TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Null(await GetRightholderAssignment(TestData.FredriksonsFabrikk.Id, TestData.FredriksonsFabrikk.Id));
+        }
+
+        /// <summary>
         /// Parties must be given as a person identifier or an organization identifier of an existing party.
         /// </summary>
         [Fact]
