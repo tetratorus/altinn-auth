@@ -1,4 +1,5 @@
-﻿using Altinn.AccessManagement.Core.Models;
+﻿using Altinn.AccessManagement.Core.Constants;
+using Altinn.AccessManagement.Core.Models;
 using Altinn.AccessManagement.Core.Services.Interfaces;
 using Altinn.AccessManagement.Models;
 using Altinn.AccessMgmt.Core.Services.Contracts;
@@ -6,6 +7,7 @@ using Altinn.AccessMgmt.PersistenceEF.Constants;
 using Altinn.Authorization.Api.Contracts.AccessManagement.Enums;
 using Altinn.Authorization.Api.Contracts.Authorization;
 using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Altinn.AccessManagement.Controllers;
@@ -15,6 +17,7 @@ namespace Altinn.AccessManagement.Controllers;
 /// </summary>
 [Route("accessmanagement/api/v1/policyinformation")]
 [ApiController]
+[Authorize(Policy = AuthzConstants.PLATFORM_ACCESSTOKEN_ISSUER_ISPLATFORM)]
 public class PolicyInformationPointController(
     IMapper mapper,
     IPolicyInformationPoint pip,

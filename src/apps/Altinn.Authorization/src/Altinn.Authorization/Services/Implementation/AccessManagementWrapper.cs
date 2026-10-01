@@ -3,6 +3,7 @@ using System.Net.Mime;
 using System.Text;
 using System.Text.Json;
 using Altinn.Authorization.Api.Contracts.Authorization;
+using Altinn.Common.AccessTokenClient.Services;
 using Altinn.Platform.Authorization.Clients;
 using Altinn.Platform.Authorization.Configuration;
 using Altinn.Platform.Authorization.Models;
@@ -24,28 +25,34 @@ public class AccessManagementWrapper : IAccessManagementWrapper
     private readonly AccessManagementClient _client;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IMemoryCache _memoryCache;
+    private readonly IAccessTokenGenerator _accessTokenGenerator;
     private readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AccessManagementWrapper"/> class.
     /// </summary>
-    public AccessManagementWrapper(IOptions<GeneralSettings> generalSettings, AccessManagementClient client, IHttpContextAccessor httpContextAccessor, IMemoryCache memoryCache)
+    public AccessManagementWrapper(IOptions<GeneralSettings> generalSettings, AccessManagementClient client, IHttpContextAccessor httpContextAccessor, IMemoryCache memoryCache, IAccessTokenGenerator accessTokenGenerator)
     {
         _client = client;
         _generalSettings = generalSettings.Value;
         _httpContextAccessor = httpContextAccessor;
         _memoryCache = memoryCache;
+        _accessTokenGenerator = accessTokenGenerator;
+    }
+
+    private HttpRequestMessage CreatePipRequest(HttpMethod method, string relativeUri)
+    {
+        HttpRequestMessage request = new(method, new Uri(new Uri(_client.Settings.Value.ApiAccessManagementEndpoint), relativeUri));
+        request.Headers.Add("PlatformAccessToken", _accessTokenGenerator.GenerateAccessToken("platform", "authorization"));
+        return request;
     }
 
     /// <inheritdoc/>
     public async Task<IEnumerable<DelegationChangeExternal>> GetAllDelegationChanges(DelegationChangeInput input, CancellationToken cancellationToken = default)
     {
-        var response = await _client.Client.SendAsync(
-            new(HttpMethod.Post, new Uri(new Uri(_client.Settings.Value.ApiAccessManagementEndpoint), "policyinformation/getdelegationchanges"))
-            {
-                Content = new StringContent(JsonSerializer.Serialize(input), Encoding.UTF8, MediaTypeNames.Application.Json)
-            },
-            cancellationToken);
+        HttpRequestMessage request = CreatePipRequest(HttpMethod.Post, "policyinformation/getdelegationchanges");
+        request.Content = new StringContent(JsonSerializer.Serialize(input), Encoding.UTF8, MediaTypeNames.Application.Json);
+        var response = await _client.Client.SendAsync(request, cancellationToken);
 
         if (response.IsSuccessStatusCode)
         {
@@ -124,7 +131,7 @@ public class AccessManagementWrapper : IAccessManagementWrapper
         if (!_memoryCache.TryGetValue(cacheKey, out IEnumerable<AccessPackageUrn> result))
         {
             var response = await _client.Client.SendAsync(
-                new(HttpMethod.Get, new Uri(new Uri(_client.Settings.Value.ApiAccessManagementEndpoint), $"policyinformation/accesspackages?to={to}&from={from}")),
+                CreatePipRequest(HttpMethod.Get, $"policyinformation/accesspackages?to={to}&from={from}"),
                 cancellationToken);
 
             if (response.IsSuccessStatusCode)
@@ -155,7 +162,7 @@ public class AccessManagementWrapper : IAccessManagementWrapper
         if (!_memoryCache.TryGetValue(cacheKey, out PipResponseDto result))
         {
             var response = await _client.Client.SendAsync(
-                new(HttpMethod.Get, new Uri(new Uri(_client.Settings.Value.ApiAccessManagementEndpoint), $"policyinformation/roles-and-accesspackages?to={to}&from={from}")),
+                CreatePipRequest(HttpMethod.Get, $"policyinformation/roles-and-accesspackages?to={to}&from={from}"),
                 cancellationToken);
 
             if (response.IsSuccessStatusCode)
