@@ -11,6 +11,22 @@ Miljøer konfigureres i `appsettings.json` under `Environments[]` (`Name`, `Acce
 `Register`, `SystemAccountId`). Ukonfigurerte miljøer vises deaktivert i UI. Ved single-file
 publish leses `appsettings.json` fra mappen ved siden av exe-fila.
 
+## Innlogging og tilgang
+
+Alle sider og Blazor-kretsen krever innlogget bruker via OpenID Connect (typisk Entra ID).
+Appen starter **ikke** uten `Authentication:Authority` og `Authentication:ClientId`:
+
+| Nøkkel | Beskrivelse |
+|---|---|
+| `Authority` | Issuer, f.eks. `https://login.microsoftonline.com/<tenant-id>/v2.0` |
+| `ClientId` / `ClientSecret` | App-registreringen. Secret kan utelates for public client med PKCE. |
+| `CallbackPath` | Redirect URI registrert på appen (default `/signin-oidc`). |
+| `RoleClaimType` | Claim som bærer roller (default `roles` = Entra app roles). |
+| `RequiredRole` | Rolle brukeren må ha for å få tilgang. Tom = alle innloggede i tenanten. Anbefales satt. |
+
+Tilgangskontrollen er global (fallback policy) — nye sider og endepunkter er beskyttet uten
+egen `[Authorize]`. Ikke stol på nettverksplassering alene; verktøyet holder prod-credentials.
+
 ## Arkitektur
 
 | Mappe | Innhold |
