@@ -158,5 +158,20 @@ public partial class ConnectionsControllerTest
 
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
+
+        /// <summary>
+        /// An unrelated party cannot be used to remove a package from a connection.
+        /// </summary>
+        [Fact]
+        public async Task RemovePackages_WithPartyMatchingNeitherFromNorTo_Returns400BadRequest()
+        {
+            HttpClient client = CreateClient(TestData.SiljeHaugen.Id, AuthzConstants.SCOPE_ENDUSER_CONNECTIONS_TOOTHERS_WRITE);
+
+            HttpResponseMessage response = await client.DeleteAsync(
+                $"{Route}/accesspackages?party={TestData.FredriksonsFabrikk.Id}&from={TestData.KaosMagicDesignAndArts.Id}&to={TestData.JosephineYvonnesdottir.Id}&packageId={PackageConstants.AccountingAndEconomicReporting.Id}",
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
     }
 }

@@ -184,6 +184,21 @@ public partial class ConnectionsControllerTest
         }
 
         /// <summary>
+        /// An unrelated party cannot be used to remove a role from a connection.
+        /// </summary>
+        [Fact]
+        public async Task RemoveRole_WithPartyMatchingNeitherFromNorTo_Returns400BadRequest()
+        {
+            HttpClient client = CreateClient(TestData.MalinEmilie.Id, AuthzConstants.SCOPE_ENDUSER_CONNECTIONS_TOOTHERS_WRITE);
+
+            HttpResponseMessage response = await client.DeleteAsync(
+                $"{Route}/roles?party={TestData.DumboAdventures.Id}&from={TestData.HanSoloEnterprise.Id}&to={TestData.BenSolo.Id}&rolecode={RoleConstants.ReporterSender.Entity.Code}",
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        /// <summary>
         /// Han Solo tries to remove "UTINN" (ReporterSender) role from a user who has it inherited through a main unit connection.
         /// There is no direct role assignment, only an inherited connection.
         /// Expects 400 BadRequest with RoleAssignmentNotRevocable problem, not 204 NoContent.

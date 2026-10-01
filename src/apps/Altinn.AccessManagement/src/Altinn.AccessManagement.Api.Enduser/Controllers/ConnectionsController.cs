@@ -200,6 +200,12 @@ public class ConnectionsController(
         [FromQuery(Name = "cascade")] bool cascade = false,
         CancellationToken cancellationToken = default)
     {
+        var validationErrors = ValidationComposer.Validate(ConnectionValidation.ValidateRemoveConnection(party.ToString(), from.ToString(), to.ToString()));
+        if (validationErrors is { })
+        {
+            return validationErrors.ToActionResult();
+        }
+
         var problem = await ConnectionService.RemoveAssignment(from, to, cascade, ConfigureConnections, cancellationToken);
         if (problem is { })
         {
@@ -308,6 +314,12 @@ public class ConnectionsController(
         [FromQuery(Name = "package")] string package,
         CancellationToken cancellationToken = default)
     {
+        var validationErrors = ValidationComposer.Validate(ConnectionValidation.ValidateRemovePackageFromConnection(party.ToString(), from.ToString(), to.ToString(), packageId, package));
+        if (validationErrors is { })
+        {
+            return validationErrors.ToActionResult();
+        }
+
         var problem = await RemovePackage();
 
         if (problem is { })
@@ -419,6 +431,12 @@ public class ConnectionsController(
         [Required][FromQuery(Name = "rolecode")] string roleCode,
         CancellationToken cancellationToken = default)
     {
+        var validationErrors = ValidationComposer.Validate(ConnectionValidation.ValidateRemoveConnection(party.ToString(), from.ToString(), to.ToString()));
+        if (validationErrors is { })
+        {
+            return validationErrors.ToActionResult();
+        }
+
         var result = await ConnectionService.RemoveRoleAssignment(party, from, to, roleCode, ConfigureConnections, cancellationToken);
 
         if (result.IsProblem)
@@ -691,6 +709,12 @@ public class ConnectionsController(
         [FromQuery(Name = "resource")] string resource,
         CancellationToken cancellationToken = default)
     {
+        var validationErrors = ValidationComposer.Validate(ConnectionValidation.ValidateRemoveResourceFromConnection(party.ToString(), from.ToString(), to.ToString()));
+        if (validationErrors is { })
+        {
+            return validationErrors.ToActionResult();
+        }
+
         var problem = await ConnectionService.RemoveResource(from, to, resource, ConfigureConnections, cancellationToken);
 
         if (problem is { })
@@ -1064,7 +1088,9 @@ public class ConnectionsController(
         [Required][FromQuery(Name = "instance")] string instance,
         CancellationToken cancellationToken = default)
     {
-        var validationErrors = ValidationComposer.Validate(ParameterValidation.InstanceUrn(instance));
+        var validationErrors = ValidationComposer.Validate(
+            ConnectionValidation.ValidateRemoveResourceFromConnection(party.ToString(), from.ToString(), to.ToString()),
+            ParameterValidation.InstanceUrn(instance));
         if (validationErrors is { })
         {
             return validationErrors.ToActionResult();
