@@ -31,7 +31,9 @@
             <MudTextField @bind-Value="_operationId"
                           Label="Operation ID (valgfri)"
                           Variant="Variant.Outlined"
-                          HelperText="Sak-ID eller annen referanse, f.eks. CAS-99028-W1N4F8"
+                          HelperText="Sak-ID eller annen referanse, f.eks. CAS-99028-W1N4F8 (kun A-Z, 0-9, . _ : / -)"
+                          Error="@(!OperationIdValid)"
+                          ErrorText="Ugyldige tegn i Operation ID"
                           Immediate="true" />
         </MudItem>
 
@@ -105,8 +107,11 @@
     private bool _removeEmptyAssignments = true;
     private JobRunList _runList = default!;
 
+    private bool OperationIdValid => ResourceCleanupJob.IsValidOperationId(_operationId.Trim());
+
     private bool CanRun =>
         !string.IsNullOrWhiteSpace(_resourceRefId) &&
+        OperationIdValid &&
         _selected.Values.Any(v => v);
 
     private void StartPreview()

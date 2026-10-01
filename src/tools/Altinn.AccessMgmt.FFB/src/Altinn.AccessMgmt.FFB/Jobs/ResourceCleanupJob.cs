@@ -1,11 +1,18 @@
 ﻿using System.Text;
+using System.Text.RegularExpressions;
 using Altinn.AccessMgmt.FFB.Jobs.Models;
 
 namespace Altinn.AccessMgmt.FFB.Jobs;
 
-public static class ResourceCleanupJob
+public static partial class ResourceCleanupJob
 {
     public const string JobName = "ResourceCleanup";
+
+    [GeneratedRegex(@"^[A-Za-z0-9._:/-]{1,128}$")]
+    private static partial Regex OperationIdPattern();
+
+    public static bool IsValidOperationId(string? operationId) =>
+        string.IsNullOrWhiteSpace(operationId) || OperationIdPattern().IsMatch(operationId);
 
     public static async Task RunAsync(
         DuoRepo repo,
@@ -16,6 +23,12 @@ public static class ResourceCleanupJob
         if (string.IsNullOrWhiteSpace(opts.ResourceRefId))
         {
             run.AddLog("ResourceRefId er tomt — avbryter.", isError: true);
+            return;
+        }
+
+        if (!IsValidOperationId(opts.OperationId))
+        {
+            run.AddLog("Operation ID inneholder ugyldige tegn (tillatt: A-Z, a-z, 0-9, . _ : / -, maks 128 tegn) — avbryter.", isError: true);
             return;
         }
 
@@ -110,6 +123,12 @@ public static class ResourceCleanupJob
     private static string FormatIds(IEnumerable<Guid> ids) =>
         string.Join(", ", ids.Select(id => $"'{id}'"));
 
+    private static string SqlLiteral(string value) =>
+        "'" + value.Replace("'", "''") + "'";
+
+    private static string SqlComment(string value) =>
+        value.Replace("\r", " ").Replace("\n", " ");
+
     private static string BuildTransactionScript(
         IReadOnlyList<Guid> accessRightIds,
         IReadOnlyList<Guid> assignmentIds,
@@ -120,6 +139,14 @@ public static class ResourceCleanupJob
             ? operationRunId.ToString()
             : opts.OperationId;
 
+        if (!IsValidOperationId(operationId))
+        {
+            throw new ArgumentException("OperationId contains characters that are not allowed.", nameof(opts));
+        }
+
+        var operationIdLiteral = SqlLiteral(operationId);
+        var refIdComment = SqlComment(opts.ResourceRefId);
+
         var sb = new StringBuilder();
         sb.AppendLine("BEGIN;");
         sb.AppendLine();
@@ -129,14 +156,14 @@ public static class ResourceCleanupJob
         sb.AppendLine("    change_operation_id   TEXT");
         sb.AppendLine(") ON COMMIT DROP;");
         sb.AppendLine("TRUNCATE session_audit_context;");
-        sb.AppendLine($"INSERT INTO session_audit_context VALUES ('{opts.SystemAccountId}', '{opts.SystemAccountId}', '{operationId}');");
+        sb.AppendLine($"INSERT INTO session_audit_context VALUES ('{opts.SystemAccountId}', '{opts.SystemAccountId}', {operationIdLiteral});");
         sb.AppendLine();
         sb.AppendLine($"SET LOCAL app.changed_by             = '{opts.SystemAccountId}';");
         sb.AppendLine($"SET LOCAL app.changed_by_system      = '{opts.SystemAccountId}';");
-        sb.AppendLine($"SET LOCAL app.change_operation_id    = '{operationId}';");
+        sb.AppendLine($"SET LOCAL app.change_operation_id    = {operationIdLiteral};");
         sb.AppendLine();
         sb.AppendLine("-- ── Delete AssignmentResource ──────────────────────────────────────");
-        sb.AppendLine($"-- resource.refid = '{opts.ResourceRefId}'  ({accessRightIds.Count} rader)");
+        sb.AppendLine($"-- resource.refid = '{refIdComment}'  ({accessRightIds.Count} rader)");
         sb.AppendLine($"DELETE FROM dbo.assignmentresource");
         sb.AppendLine($"WHERE id IN ({FormatIds(accessRightIds)});");
         sb.AppendLine();
