@@ -182,7 +182,7 @@ Josephine has been given access to two specific instances on behalf of Kaos. The
 | `GET /connections/resources` | GetResources | 7 | Malin to-others sees Skattemelding + MVA; Thea from-others sees same; empty direction; wrong scope direction; write scope on read |
 | `GET /connections/resources/rights` | GetResourceRights | 8 | Malin sees 9 direct rights Dumbo->Mille; Thea from-others sees same; Thea gets 9 indirect rights via key-role (DAGL of Mille); Milena gets 9 indirect rights (LEDE of Mille); scope enforcement |
 | `POST /connections/resources/rights` | AddResourceRights | 5 | Delegation check + delegate all right keys with XACML policy verification; invalid resource; no connection; scope enforcement |
-| `PUT /connections/resources/rights` | UpdateResourceRights | 5 | Update with XACML policy verification; empty right keys; scope enforcement |
+| `PUT /connections/resources/rights` | UpdateResourceRights | 6 | Update with XACML policy verification; empty or missing right keys -> 400; scope enforcement |
 | `DELETE /connections/resources` | RemoveResource | 5 | Malin removes (to-others); Thea removes (from-others); invalid resource; scope enforcement |
 | `GET /connections/resources/delegationcheck` | CheckResource | 4 | Malin full access (roles + packages); Thea package-only access; partial access (some denied); scope enforcement |
 
