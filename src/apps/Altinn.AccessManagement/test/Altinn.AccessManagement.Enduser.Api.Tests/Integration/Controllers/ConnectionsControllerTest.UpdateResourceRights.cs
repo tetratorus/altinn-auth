@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Xml;
 using Altinn.AccessManagement.Api.Enduser.Controllers;
 using Altinn.AccessManagement.Core.Constants;
+using Altinn.AccessManagement.Core.Errors;
 using Altinn.AccessManagement.Core.Repositories.Interfaces;
 using Altinn.AccessManagement.Core.Services.Interfaces;
 using Altinn.AccessManagement.TestUtils;
@@ -17,6 +18,7 @@ using Altinn.Authorization.ABAC.Constants;
 using Altinn.Authorization.ABAC.Utils;
 using Altinn.Authorization.ABAC.Xacml;
 using Altinn.Authorization.Api.Contracts.AccessManagement;
+using Altinn.Authorization.ProblemDetails;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Altinn.AccessManagement.Enduser.Api.Tests.Integration.Controllers;
@@ -213,19 +215,18 @@ public partial class ConnectionsControllerTest
         }
 
         /// <summary>
-        /// Malin (MD of Dumbo Adventures) updates resource rights with an empty rights list, effectively removing all delegations.
-        /// Expects 200 OK.
+        /// Malin (MD of Dumbo Adventures) tries to replace resource rights with an empty rights list.
+        /// An empty list is rejected rather than silently ignored; removing a resource is done with DELETE resources.
+        /// Expects 400 BadRequest with AM-00033 (No right key provided).
         /// </summary>
         [Fact]
-        public async Task UpdateResourceRights_WithEmptyRightKeys_Returns200Ok()
+        public async Task UpdateResourceRights_WithEmptyRightKeys_Returns400MissingRightKey()
         {
             List<string> rightKeys = await GetDelegatableRightKeys("app_mat_mattilsynet-baker-konditorvare");
             Assert.NotEmpty(rightKeys);
 
-            // First add initial delegation
             await AddInitialResourceRights("app_mat_mattilsynet-baker-konditorvare", [rightKeys.First()]);
 
-            // Update with empty list (remove all rights)
             var updateBody = new RightKeyListDto { DirectRightKeys = [] };
             HttpClient client = CreateClient(TestData.MalinEmilie.Id, AuthzConstants.SCOPE_ENDUSER_CONNECTIONS_TOOTHERS_WRITE);
 
@@ -234,7 +235,34 @@ public partial class ConnectionsControllerTest
                 updateBody,
                 TestContext.Current.CancellationToken);
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            await AssertMissingRightKey(response);
+        }
+
+        /// <summary>
+        /// Malin (MD of Dumbo Adventures) sends a body without directRightKeys.
+        /// Expects 400 BadRequest with AM-00033 (No right key provided).
+        /// </summary>
+        [Fact]
+        public async Task UpdateResourceRights_WithoutRightKeys_Returns400MissingRightKey()
+        {
+            HttpClient client = CreateClient(TestData.MalinEmilie.Id, AuthzConstants.SCOPE_ENDUSER_CONNECTIONS_TOOTHERS_WRITE);
+
+            HttpResponseMessage response = await client.PutAsJsonAsync(
+                $"{Route}/resources/rights?party={TestData.DumboAdventures.Id}&to={TestData.MilleHundefrisor.Id}&resource=app_mat_mattilsynet-baker-konditorvare",
+                new { },
+                TestContext.Current.CancellationToken);
+
+            await AssertMissingRightKey(response);
+        }
+
+        private static async Task AssertMissingRightKey(HttpResponseMessage response)
+        {
+            string responseContent = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.True(response.StatusCode == HttpStatusCode.BadRequest, $"Expected BadRequest but got {response.StatusCode}. Response body: {responseContent}");
+
+            AltinnProblemDetails problemDetails = JsonSerializer.Deserialize<AltinnProblemDetails>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            Assert.NotNull(problemDetails);
+            Assert.Equal(Problems.MissingRightKey.ErrorCode, problemDetails.ErrorCode);
         }
 
         /// <summary>

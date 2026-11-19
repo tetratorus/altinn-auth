@@ -378,6 +378,16 @@ public partial class ConnectionService(
 
     public async Task<Result<bool>> UpdateResource(Entity from, Entity to, Resource resourceObj, IEnumerable<string> rightKeys, Entity by, Action<ConnectionOptions> configureConnection = null, CancellationToken cancellationToken = default)
     {
+        if (resourceObj is null)
+        {
+            return Problems.InvalidResource;
+        }
+
+        if (rightKeys is null || !rightKeys.Any())
+        {
+            return Problems.MissingRightKey;
+        }
+
         var canDelegate = await ResourceDelegationCheck(by.Id, from.Id, resourceObj?.RefId, configureConnection, cancellationToken: cancellationToken);
         if (canDelegate.IsProblem)
         {
