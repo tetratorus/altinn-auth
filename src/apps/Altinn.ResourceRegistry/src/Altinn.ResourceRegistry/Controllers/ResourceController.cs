@@ -204,9 +204,19 @@ namespace Altinn.ResourceRegistry.Controllers
                 return NotFound();
             }
 
+            if (!AuthorizationUtil.HasWriteAccess(currentResource.HasCompetentAuthority?.Organization, User))
+            {
+                return Forbid();
+            }
+
             if (id != serviceResource.Identifier)
             {
                 return BadRequest("Id in path does not match ID in resource");
+            }
+
+            if (!IsSameCompetentAuthority(currentResource.HasCompetentAuthority, serviceResource.HasCompetentAuthority) && !AuthorizationUtil.HasAdminAccess(User))
+            {
+                return Forbid();
             }
 
             if (!ModelState.IsValid)
@@ -642,6 +652,12 @@ namespace Altinn.ResourceRegistry.Controllers
             var org = Core.Register.OrganizationNumber.Parse(serviceResource.HasCompetentAuthority.Organization);
             ServiceOwnerLookup serviceOwners = await _serviceOwnerService.GetServiceOwners(cancellationToken);
             return serviceOwners.TryFind(org, out var owners) && owners.Length > 0 ? owners[0].OrgCode : null;
+        }
+
+        private static bool IsSameCompetentAuthority(CompetentAuthority current, CompetentAuthority updated)
+        {
+            return string.Equals(current?.Organization, updated?.Organization, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(current?.Orgcode, updated?.Orgcode, StringComparison.OrdinalIgnoreCase);
         }
     }
 

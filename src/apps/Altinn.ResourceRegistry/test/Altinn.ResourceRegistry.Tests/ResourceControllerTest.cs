@@ -1226,7 +1226,7 @@ namespace Altinn.ResourceRegistry.Tests
 
             ServiceResource resource = new ServiceResource()
             {
-                Identifier = "altinn_access_management",
+                Identifier = "altinn_access_management_skd",
                 Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 Status = "Active",
                 Homepage = "www.altinn.no",
@@ -1302,7 +1302,7 @@ namespace Altinn.ResourceRegistry.Tests
 
             ServiceResource resource = new ServiceResource()
             {
-                Identifier = "altinn_access_management",
+                Identifier = "altinn_access_management_skd",
                 Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 Status = "Active",
                 Homepage = "www.altinn.no",
@@ -1547,6 +1547,43 @@ namespace Altinn.ResourceRegistry.Tests
             string token = PrincipalUtil.GetOrgToken("skd", "974761076", "altinn:resourceregistry/resource.write");
             ServiceResource resource = new ServiceResource()
             {
+                Identifier = "altinn_access_management_skd",
+                Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
+                Description = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
+                RightDescription = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
+                Status = "Completed",
+                ContactPoints = new List<ContactPoint>() { new ContactPoint() { Category = "Support", ContactPage = "support.skd.no", Email = "support@skd.no", Telephone = "+4790012345" } },
+                HasCompetentAuthority = new Altinn.ResourceRegistry.Core.Models.CompetentAuthority()
+                {
+                    Organization = "974761076",
+                    Orgcode = "skd",
+                },
+                ResourceType = ResourceType.GenericAccessResource
+            };
+
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management_skd";
+
+            HttpRequestMessage httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(resource), Encoding.UTF8, "application/json")
+            };
+
+            httpRequestMessage.Headers.Add("Accept", "application/json");
+            httpRequestMessage.Headers.Add("ContentType", "application/json");
+
+            HttpResponseMessage response = await client.SendAsync(httpRequestMessage);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task UpdateResource_NotOwnerOfStoredResource_Forbidden()
+        {
+            var client = CreateClient();
+            string token = PrincipalUtil.GetOrgToken("skd", "974761076", "altinn:resourceregistry/resource.write");
+            ServiceResource resource = new ServiceResource()
+            {
                 Identifier = "altinn_access_management",
                 Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 Description = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
@@ -1574,7 +1611,44 @@ namespace Altinn.ResourceRegistry.Tests
 
             HttpResponseMessage response = await client.SendAsync(httpRequestMessage);
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task UpdateResource_ChangeOwnerWithoutAdminScope_Forbidden()
+        {
+            var client = CreateClient();
+            string token = PrincipalUtil.GetOrgToken("digdir", "991825827", "altinn:resourceregistry/resource.write");
+            ServiceResource resource = new ServiceResource()
+            {
+                Identifier = "altinn_access_management",
+                Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
+                Description = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
+                RightDescription = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
+                Status = "Completed",
+                ContactPoints = new List<ContactPoint>() { new ContactPoint() { Category = "Support", ContactPage = "support.skd.no", Email = "support@skd.no", Telephone = "+4790012345" } },
+                HasCompetentAuthority = new Altinn.ResourceRegistry.Core.Models.CompetentAuthority()
+                {
+                    Organization = "974761076",
+                    Orgcode = "skd",
+                },
+                ResourceType = ResourceType.GenericAccessResource
+            };
+
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management";
+
+            HttpRequestMessage httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(resource), Encoding.UTF8, "application/json")
+            };
+
+            httpRequestMessage.Headers.Add("Accept", "application/json");
+            httpRequestMessage.Headers.Add("ContentType", "application/json");
+
+            HttpResponseMessage response = await client.SendAsync(httpRequestMessage);
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
 
         [Fact]
@@ -1621,7 +1695,7 @@ namespace Altinn.ResourceRegistry.Tests
             string token = PrincipalUtil.GetOrgToken("skd", "974761076", "altinn:resourceregistry/resource.write");
             ServiceResource resource = new ServiceResource()
             {
-                Identifier = "altinn_access_management",
+                Identifier = "altinn_access_management_skd",
                 Title = new Dictionary<string, string> { { "en", " " }, { "nb", "" } },
                 Description = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 RightDescription = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
@@ -1635,7 +1709,7 @@ namespace Altinn.ResourceRegistry.Tests
             };
 
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management";
+            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management_skd";
 
             HttpRequestMessage httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri)
             {
@@ -1661,7 +1735,7 @@ namespace Altinn.ResourceRegistry.Tests
             string token = PrincipalUtil.GetOrgToken("skd", "974761076", "altinn:resourceregistry/resource.write");
             ServiceResource resource = new ServiceResource()
             {
-                Identifier = "altinn_access_management",
+                Identifier = "altinn_access_management_skd",
                 Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 Description = new Dictionary<string, string> { { "en", "English" }, { "nn", "Nynorsk" } },
                 RightDescription = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
@@ -1675,7 +1749,7 @@ namespace Altinn.ResourceRegistry.Tests
             };
 
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management";
+            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management_skd";
 
             HttpRequestMessage httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri)
             {
@@ -1700,7 +1774,7 @@ namespace Altinn.ResourceRegistry.Tests
             string token = PrincipalUtil.GetOrgToken("skd", "974761076", "altinn:resourceregistry/resource.write");
             ServiceResource resource = new ServiceResource()
             {
-                Identifier = "altinn_access_management",
+                Identifier = "altinn_access_management_skd",
                 Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 Description = new Dictionary<string, string> { { "en", "" }, { "nb", " " } },
                 RightDescription = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
@@ -1714,7 +1788,7 @@ namespace Altinn.ResourceRegistry.Tests
             };
 
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management";
+            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management_skd";
 
             HttpRequestMessage httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri)
             {
@@ -1740,7 +1814,7 @@ namespace Altinn.ResourceRegistry.Tests
             string token = PrincipalUtil.GetOrgToken("skd", "974761076", "altinn:resourceregistry/resource.write");
             ServiceResource resource = new ServiceResource()
             {
-                Identifier = "altinn_access_management",
+                Identifier = "altinn_access_management_skd",
                 Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 Description = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 RightDescription = new Dictionary<string, string> { { "nb", "" }, { "nn", " " } },
@@ -1754,7 +1828,7 @@ namespace Altinn.ResourceRegistry.Tests
             };
 
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management";
+            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management_skd";
 
             HttpRequestMessage httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri)
             {
@@ -1780,7 +1854,7 @@ namespace Altinn.ResourceRegistry.Tests
             string token = PrincipalUtil.GetOrgToken("skd", "974761076", "altinn:resourceregistry/resource.write");
             ServiceResource resource = new ServiceResource()
             {
-                Identifier = "altinn_access_management",
+                Identifier = "altinn_access_management_skd",
                 Title = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 Description = new Dictionary<string, string> { { "en", "English" }, { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
                 RightDescription = new Dictionary<string, string> { { "nb", "Bokmal" }, { "nn", "Nynorsk" } },
@@ -1796,7 +1870,7 @@ namespace Altinn.ResourceRegistry.Tests
             };
 
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management";
+            string requestUri = "resourceregistry/api/v1/Resource/altinn_access_management_skd";
 
             HttpRequestMessage httpRequestMessage = new HttpRequestMessage(HttpMethod.Put, requestUri)
             {
