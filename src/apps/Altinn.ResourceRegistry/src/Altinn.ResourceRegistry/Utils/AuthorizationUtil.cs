@@ -72,7 +72,7 @@ namespace Altinn.ResourceRegistry.Utils
 
             Console.WriteLine($"AuthorizationUtil // IsOwnerOfResource // Org claim: {orgClaim}.");
 
-            if (resourceOwner.Equals(orgNumber, StringComparison.CurrentCultureIgnoreCase))
+            if (resourceOwner != null && resourceOwner.Equals(orgNumber, StringComparison.CurrentCultureIgnoreCase))
             {
                 return true;
             }
