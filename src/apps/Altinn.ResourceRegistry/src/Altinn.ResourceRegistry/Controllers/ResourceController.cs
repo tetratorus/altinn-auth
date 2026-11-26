@@ -204,9 +204,22 @@ namespace Altinn.ResourceRegistry.Controllers
                 return NotFound();
             }
 
+            string currentOwner = currentResource.HasCompetentAuthority?.Organization;
+            bool hasAdminAccess = AuthorizationUtil.HasAdminAccess(User);
+
+            if (!hasAdminAccess && (string.IsNullOrEmpty(currentOwner) || !AuthorizationUtil.HasWriteAccess(currentOwner, User)))
+            {
+                return Forbid();
+            }
+
             if (id != serviceResource.Identifier)
             {
                 return BadRequest("Id in path does not match ID in resource");
+            }
+
+            if (!hasAdminAccess && !string.Equals(serviceResource.HasCompetentAuthority?.Organization, currentOwner, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
             }
 
             if (!ModelState.IsValid)
